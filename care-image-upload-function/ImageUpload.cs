@@ -73,5 +73,33 @@ namespace care_image_upload_function
                 return new BadRequestObjectResult("Error generating SAS URL.");
             }
         }
+
+        [Function("DeleteImage")]
+        public async Task<IActionResult> DeleteImage([HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "DeleteImage/{fileName}")] HttpRequest req, string fileName)
+        {
+            string connection = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
+            string containerName = Environment.GetEnvironmentVariable("ContainerName");
+
+            try
+            {
+                var blobClient = new BlobContainerClient(connection, containerName);
+                var blob = blobClient.GetBlobClient(fileName);
+
+                if (!await blob.ExistsAsync())
+                {
+                    _logger.LogWarning($"File not found: {fileName}");
+                    return new NotFoundObjectResult("File not found.");
+                }
+
+                await blob.DeleteAsync();
+                _logger.LogInformation($"File deleted successfully: {fileName}");
+                return new OkObjectResult(new { Message = "File Deleted", FileName = fileName });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error deleting file: {ex.Message}");
+                return new BadRequestObjectResult("Error deleting file.");
+            }
+        }
     }
 }
